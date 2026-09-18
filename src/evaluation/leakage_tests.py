@@ -1,10 +1,5 @@
-"""
-Automated leakage checks. Run this after every pipeline change.
-If any check fails, DO NOT trust downstream results.
-"""
 import numpy as np
 import pandas as pd
-
 
 def test_chronological_split(meta: pd.DataFrame, train_mask, val_mask, test_mask):
     train_max = meta.loc[train_mask, "decision_ts"].max()
@@ -14,7 +9,6 @@ def test_chronological_split(meta: pd.DataFrame, train_mask, val_mask, test_mask
     assert train_max <= val_min, f"FAIL: train overlaps val ({train_max} > {val_min})"
     assert val_max <= test_min, f"FAIL: val overlaps test ({val_max} > {test_min})"
     print("[PASS] chronological_split: train < val < test, no time overlap")
-
 
 def test_target_after_decision(meta: pd.DataFrame):
     bad = (meta["target_ts"] <= meta["decision_ts"]).sum()
@@ -30,9 +24,6 @@ def test_no_cross_day_windows(meta: pd.DataFrame):
 
 
 def test_tau_fit_on_train_only(y_return, train_mask):
-    """Sanity check that tau computed only from train differs from a
-    tau computed on the full set (guards against accidentally passing
-    the whole array in some future refactor)."""
     from src.data.windows import fit_direction_threshold
     tau_train = fit_direction_threshold(y_return[train_mask])
     tau_all = fit_direction_threshold(y_return)

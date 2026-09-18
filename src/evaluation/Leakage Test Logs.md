@@ -1,0 +1,47 @@
+Automated leakage checks. Run this after every pipeline change.
+If any check fails, DO NOT trust downstream results.
+### Test Chronological Split
+```Python
+def test_chronological_split(meta: pd.DataFrame, train_mask, val_mask, test_mask):
+    train_max = meta.loc[train_mask, "decision_ts"].max()
+    val_min = meta.loc[val_mask, "decision_ts"].min()
+    val_max = meta.loc[val_mask, "decision_ts"].max()
+    test_min = meta.loc[test_mask, "decision_ts"].min()
+    assert train_max <= val_min, f"FAIL: train overlaps val ({train_max} > {val_min})"
+    assert val_max <= test_min, f"FAIL: val overlaps test ({val_max} > {test_min})"
+    print("[PASS] chronological_split: train < val < test, no time overlap")
+```
+---
+### Test Target After Decision
+```Python
+def test_target_after_decision(meta: pd.DataFrame):
+    bad = (meta["target_ts"] <= meta["decision_ts"]).sum()
+    assert bad == 0, f"FAIL: {bad} windows have target_ts <= decision_ts"
+    print("[PASS] target_after_decision: every target strictly follows its decision point")
+```
+---
+### Test when No Cross day Window
+```Python
+def test_no_cross_day_windows(meta: pd.DataFrame):
+    bad = (pd.to_datetime(meta["target_ts"]).dt.date !=
+           pd.to_datetime(meta["decision_ts"]).dt.date).sum()
+    assert bad == 0, f"FAIL: {bad} windows span across trading days"
+    print("[PASS] no_cross_day_windows: context/target never cross a session boundary")
+```
+---
+## Test the TAU Fit train 
+Sanity check that tau computed only from train differs from a
+tau computed on the full set (guards against accidentally passing
+the whole array in some future refactor).
+```Python
+def test_tau_fit_on_train_only(y_return, train_mask):
+    from src.data.windows import fit_direction_threshold
+    tau_train = fit_direction_threshold(y_return[train_mask])
+    tau_all = fit_direction_threshold(y_return)
+    print(f"[INFO] tau(train)={tau_train:.6f} vs tau(all)={tau_all:.6f} "
+          f"-- these SHOULD differ slightly; if identical, check you aren't "
+          f"accidentally fitting on the full array.")
+```
+---
+### Output
+![[Pasted image 20260918124300.png]]
