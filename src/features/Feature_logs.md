@@ -97,4 +97,6 @@ def add_all_features(df: pd.DataFrame) -> pd.DataFrame:
     df = add_time_features(df)
     return df
 ```
+![[Pasted image 20260918121612.png]]
+
 ---

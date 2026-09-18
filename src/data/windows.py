@@ -1,12 +1,3 @@
-"""
-Rolling intraday forecasting windows + walk-forward chronological splitting.
-
-Implements ChatGPT's Section 4 / 9 design:
-  - context window: [t - context_len, t]   (what the model sees)
-  - target window:  (t, t + horizon]       (what it must predict)
-  - both windows must stay WITHIN the same trading day (no overnight leakage)
-  - direction threshold tau is fit on TRAIN ONLY, then applied everywhere
-"""
 import numpy as np
 import pandas as pd
 
@@ -16,15 +7,7 @@ FEATURE_COLS = [
     "minutes_since_open", "session_position",
 ]
 
-
 def make_windows(df: pd.DataFrame, context_bars: int, horizon_bars: int):
-    """
-    context_bars: number of 5-min bars in the input context (e.g. 9 bars = 45 min)
-    horizon_bars: number of 5-min bars ahead to predict (e.g. 12 bars = 1 hour)
-
-    Returns X (n_samples, context_bars, n_features), y_return, y_direction,
-    and an index of (day, target_timestamp) for traceability.
-    """
     X, y_return, meta = [], [], []
     for day, g in df.groupby("date"):
         g = g.reset_index(drop=True)
@@ -45,11 +28,6 @@ def make_windows(df: pd.DataFrame, context_bars: int, horizon_bars: int):
 
 
 def fit_direction_threshold(y_return_train: np.ndarray, quantile: float = 0.33) -> float:
-    """
-    tau chosen so that roughly `quantile` of TRAIN returns fall below -tau
-    (DOWN) and above +tau (UP), leaving the rest NEUTRAL. Fit on train only,
-    per Section 5 -- never let test data influence tau.
-    """
     return float(np.quantile(np.abs(y_return_train), 1 - 2 * quantile))
 
 
@@ -59,11 +37,6 @@ def to_direction(y_return: np.ndarray, tau: float) -> np.ndarray:
 
 
 def walk_forward_split(meta: pd.DataFrame, train_frac=0.7, val_frac=0.15):
-    """
-    Chronological split by unique trading day, NOT by row -- ensures no
-    within-day leakage across the split boundary. Returns boolean masks
-    aligned to `meta`'s row order.
-    """
     days = sorted(meta["date"].unique())
     n_days = len(days)
     n_train = int(n_days * train_frac)
