@@ -1,9 +1,3 @@
-"""
-Feature engineering. EVERY feature here is computed using only data at or
-before its own timestamp (rolling/expanding windows, no centered windows,
-no .shift(-1) anywhere) -- this is what "no future information leakage"
-means in practice, per ChatGPT's roadmap Section 17.
-"""
 import numpy as np
 import pandas as pd
 
@@ -17,7 +11,6 @@ def add_returns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_volatility(df: pd.DataFrame, window: int = 6) -> pd.DataFrame:
-    """Rolling realized volatility of 1-bar log returns, within-day only."""
     df = df.copy()
     df["volatility"] = df.groupby("date")["log_return_1"].transform(
         lambda s: s.rolling(window, min_periods=2).std()
@@ -36,7 +29,6 @@ def add_moving_averages(df: pd.DataFrame, windows=(6, 12)) -> pd.DataFrame:
 
 def add_rsi(df: pd.DataFrame, window: int = 14) -> pd.DataFrame:
     df = df.copy()
-
     def _rsi(close):
         delta = close.diff()
         gain = delta.clip(lower=0)
@@ -45,7 +37,6 @@ def add_rsi(df: pd.DataFrame, window: int = 14) -> pd.DataFrame:
         avg_loss = loss.rolling(window, min_periods=1).mean()
         rs = avg_gain / avg_loss.replace(0, np.nan)
         return 100 - (100 / (1 + rs))
-
     df["rsi"] = df.groupby("date")["close"].transform(_rsi)
     return df
 
