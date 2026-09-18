@@ -1,14 +1,7 @@
-"""
-Cleaning + market-session filtering.
-
-Pipeline Stage 1:
-Raw OHLCV -> Cleaning -> Trading-session filtering -> Missing-value handling
-"""
 import pandas as pd
 
 market_op = "09:15"
 market_cl = "15:30"
-
 
 def load_raw(path: str) -> pd.DataFrame:
     df = pd.read_csv(path, parse_dates=["timestamp"])
@@ -17,18 +10,12 @@ def load_raw(path: str) -> pd.DataFrame:
 
 
 def filter_market_session(df: pd.DataFrame) -> pd.DataFrame:
-    """Keep only bars inside the official trading session, per trading day."""
     t = df["timestamp"].dt.time
     mask = (t >= pd.Timestamp(market_op).time()) & (t <= pd.Timestamp(market_cl).time())
     return df.loc[mask].reset_index(drop=True)
 
 
 def handle_missing(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Forward-fill price gaps WITHIN a trading day only (never across days —
-    that would leak the previous day's close into a new session's open).
-    Volume gaps are filled with 0 (no trades), not ffill.
-    """
     df = df.copy()
     df["date"] = df["timestamp"].dt.date
     price_cols = ["open", "high", "low", "close", "vwap"]
@@ -41,7 +28,7 @@ def handle_missing(df: pd.DataFrame) -> pd.DataFrame:
     after = len(df)
     if before != after:
         print(f"[clean] dropped {before - after} rows with unrecoverable NaNs "
-              f"(e.g. first bar of a day with no prior value to ffill from)")
+              f"(e.g. first bar of a day with no prior value to fill from)")
     return df
 
 
