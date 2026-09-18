@@ -54,3 +54,5 @@ def run_cleaning(raw_path: str) -> pd.DataFrame:
     return df
 ```
 ---
+### Output 
+![[Pasted image 20260918122853.png]]

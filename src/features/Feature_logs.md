@@ -100,3 +100,5 @@ def add_all_features(df: pd.DataFrame) -> pd.DataFrame:
 ![[Pasted image 20260918121612.png]]
 
 ---
+### Output
+![[Pasted image 20260918123110.png|700]]

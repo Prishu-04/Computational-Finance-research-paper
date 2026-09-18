@@ -72,4 +72,5 @@ def walk_forward_split(meta: pd.DataFrame, train_frac=0.7, val_frac=0.15):
     return train_mask, val_mask, test_mask
 ```
 ---
-
+### Output 
+![[Pasted image 20260918123158.png]]
