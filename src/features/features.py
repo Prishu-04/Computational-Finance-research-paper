@@ -56,7 +56,6 @@ def add_macd(df: pd.DataFrame, fast=12, slow=26, signal=9) -> pd.DataFrame:
 
 
 def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Time-of-day / session-position features -- Candidate A from the roadmap."""
     df = df.copy()
     minutes_since_open = (
         (df["timestamp"] - df["timestamp"].dt.normalize()
