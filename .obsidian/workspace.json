@@ -11,14 +11,10 @@
             "id": "88af8a8ed0b38979",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "src/evaluation/Leakage Test Logs.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "Leakage Test Logs"
+              "title": "New tab"
             }
           }
         ]
@@ -190,18 +186,28 @@
   },
   "active": "88af8a8ed0b38979",
   "lastOpenFiles": [
+    "requirements.txt",
+    "README_dataset.md",
+    "README.md",
     "Pasted image 20260918124300.png",
-    "src/data/__pycache__/windows.cpython-314.pyc",
-    "src/evaluation/Leakage Test Logs.md",
-    "src/data/Window Logs.md",
     "Pasted image 20260918123158.png",
-    "src/features/Feature_logs.md",
     "Pasted image 20260918123110.png",
-    "src/preprocessing/Preprocessing Logs.md",
     "Pasted image 20260918122853.png",
     "Pasted image 20260918121612.png",
-    "paper/2511.11698v3.pdf",
-    "paper/Morai-1.pdf",
+    "src/preprocessing/__init__.py",
+    "src/preprocessing/Preprocessing Logs.md",
+    "src/preprocessing/Datacleaning.py",
+    "src/models/__init__.py",
+    "src/models/xgboost",
+    "src/models/transformer",
+    "src/models/svr",
+    "src/models/random_forest",
+    "src/models/run_deep_learning_tiers.py",
+    "src/models/run_classical_baselines.py",
+    "src/models/patchtst",
+    "src/features/Feature_logs.md",
+    "src/evaluation/Leakage Test Logs.md",
+    "src/data/Window Logs.md",
     "paper/IMG20260818164917.jpg",
     "paper/IMG20260818164909.jpg"
   ]
