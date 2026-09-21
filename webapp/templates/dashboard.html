@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Optimized Moirai — Intraday Direction Ladder</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c1420;
+  --panel:#121b2b;
+  --panel-2:#0f1826;
+  --border:#243350;
+  --border-soft:#1b2740;
+  --text:#e7ecf6;
+  --text-mute:#8695b3;
+  --text-dim:#5c6b8a;
+  --up:#4fbf8a;
+  --down:#e0665a;
+  --neutral:#8695b3;
+  --t1:#7f8fb0;
+  --t2:#49b3ac;
+  --t3:#8f83d6;
+  --t4:#dba34e;
+  --t4-hero:#f0c674;
+  --amber-soft: rgba(219,163,78,0.14);
+  --radius:10px;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#0c1420; --panel:#121b2b; --panel-2:#0f1826; --border:#243350; --border-soft:#1b2740;
+    --text:#e7ecf6; --text-mute:#8695b3; --text-dim:#5c6b8a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0c1420; --panel:#121b2b; --panel-2:#0f1826; --border:#243350; --border-soft:#1b2740;
+  --text:#e7ecf6; --text-mute:#8695b3; --text-dim:#5c6b8a;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Space Grotesk',system-ui,sans-serif;
+  min-height:100vh;
+}
+.wrap{max-width:1320px;margin:0 auto;padding:28px 22px 60px;}
+
+header.top{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:18px;margin-bottom:22px;border-bottom:1px solid var(--border-soft);padding-bottom:18px;}
+.brand h1{font-size:22px;font-weight:700;margin:0 0 4px;letter-spacing:-0.01em;}
+.brand p{margin:0;color:var(--text-mute);font-size:13.5px;max-width:560px;line-height:1.5;}
+.brand .tag{color:var(--t4-hero);}
+
+nav.tabs{display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--border);border-radius:999px;padding:4px;}
+nav.tabs button{
+  border:none;background:transparent;color:var(--text-mute);font-family:'Space Grotesk',sans-serif;
+  font-size:13.5px;font-weight:500;padding:8px 16px;border-radius:999px;cursor:pointer;transition:background .15s, color .15s;
+}
+nav.tabs button.active{background:var(--t4);color:#20160500;color:#191305;}
+nav.tabs button:not(.active):hover{color:var(--text);}
+
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);}
+.panel-pad{padding:18px 20px;}
+.panel h2{font-size:14.5px;margin:0 0 2px;font-weight:600;}
+.panel .sub{font-size:12px;color:var(--text-dim);margin:0 0 14px;}
+
+/* ---- simulator layout ---- */
+#sim-view{display:grid;grid-template-columns:1fr 320px;gap:18px;}
+@media (max-width:900px){ #sim-view{grid-template-columns:1fr;} }
+
+.chart-card{padding:18px 20px 10px;}
+.chart-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:6px;}
+.chart-head .clock{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--t4-hero);}
+.chart-head .clock span{color:var(--text-dim);font-size:13px;font-weight:400;margin-left:8px;}
+.chart-head .price-now{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text-mute);text-align:right;}
+.chart-head .price-now b{color:var(--text);font-size:15px;}
+
+#priceChart{width:100%;height:auto;display:block;}
+
+.controls-row{display:flex;align-items:center;gap:8px;margin:12px 0 4px;flex-wrap:wrap;}
+.btn{
+  background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+  font-family:'Space Grotesk',sans-serif;font-size:12.5px;font-weight:500;
+  padding:7px 13px;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+}
+.btn:hover{border-color:var(--t4);}
+.btn.primary{background:var(--t4);color:#191305;border-color:var(--t4);font-weight:600;}
+.btn.primary:hover{background:var(--t4-hero);}
+.btn:disabled{opacity:0.4;cursor:not-allowed;}
+.spacer{flex:1;}
+.speed-group{display:flex;gap:3px;background:var(--panel-2);border:1px solid var(--border);border-radius:7px;padding:3px;}
+.speed-group button{background:transparent;border:none;color:var(--text-mute);font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:5px 9px;border-radius:5px;cursor:pointer;}
+.speed-group button.active{background:var(--border);color:var(--text);}
+
+.legend-row{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--text-mute);margin:10px 0 4px;padding-top:10px;border-top:1px solid var(--border-soft);}
+.legend-row .item{display:flex;align-items:center;gap:6px;}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+.tri{width:0;height:0;display:inline-block;}
+.tri.up{border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:8px solid var(--up);}
+.tri.down{border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid var(--down);}
+
+/* sidebar */
+.side-block{margin-bottom:14px;}
+.field label{display:block;font-size:11.5px;color:var(--text-dim);margin-bottom:5px;font-weight:500;}
+select{
+  width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+  font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:8px 9px;border-radius:7px;
+}
+.model-tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-mute);margin-top:6px;}
+.model-tag .dot{width:7px;height:7px;}
+
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.stat{background:var(--panel-2);border:1px solid var(--border-soft);border-radius:8px;padding:10px 11px;}
+.stat .k{font-size:10.5px;color:var(--text-dim);margin-bottom:4px;}
+.stat .v{font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;}
+.stat .v.small{font-size:13px;}
+.stat .v.up{color:var(--up);}
+.stat .v.down{color:var(--down);}
+
+.accbar-wrap{margin-top:10px;}
+.accbar-track{height:7px;border-radius:99px;background:var(--panel-2);border:1px solid var(--border-soft);overflow:hidden;position:relative;}
+.accbar-fill{height:100%;background:linear-gradient(90deg,var(--t4),var(--t4-hero));border-radius:99px;}
+.accbar-ref{position:absolute;top:-3px;width:2px;height:13px;background:var(--text-mute);}
+.accbar-labels{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-dim);margin-top:4px;}
+
+.note{font-size:11.5px;color:var(--text-dim);line-height:1.55;background:var(--panel-2);border:1px solid var(--border-soft);border-radius:8px;padding:11px 12px;}
+.note b{color:var(--text-mute);}
+
+/* ---- comparison tab ---- */
+#cmp-view{display:none;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+@media (max-width:860px){.grid2{grid-template-columns:1fr;}}
+.axis-note{font-size:11px;color:var(--text-dim);margin-top:4px;}
+table.metrics{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;}
+table.metrics th{text-align:left;color:var(--text-dim);font-weight:500;font-size:10.5px;text-transform:none;padding:8px 10px;border-bottom:1px solid var(--border);}
+table.metrics td{padding:8px 10px;border-bottom:1px solid var(--border-soft);color:var(--text);}
+table.metrics tr.tier-row td{padding-top:16px;color:var(--text-mute);font-family:'Space Grotesk',sans-serif;font-size:11px;border-bottom:1px solid var(--border-soft);}
+table.metrics td.model-cell{font-family:'Space Grotesk',sans-serif;font-size:12.5px;color:var(--text);display:flex;align-items:center;gap:8px;}
+table.metrics td.num{text-align:right;}
+table.metrics tr.hero td{background:var(--amber-soft);}
+.pill{font-size:9.5px;padding:2px 7px;border-radius:99px;border:1px solid var(--border);color:var(--text-mute);}
+
+footer.foot{margin-top:26px;font-size:11px;color:var(--text-dim);text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <h1>Intraday Direction Ladder <span class="tag">— Optimized Moirai</span></h1>
+      <p>Five tiers of forecasters, one 5-minute NIFTY-style tape. Step through a trading day and watch each model call the next 60 minutes at every decision point, or compare the full model ladder on the metrics that matter.</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <nav class="tabs">
+        <button class="active" data-tab="sim">Prediction simulator</button>
+        <button data-tab="cmp">Model ladder</button>
+      </nav>
+      <a href="/pipeline" class="btn" style="text-decoration:none;">⚙ Data &amp; pipeline</a>
+    </div>
+  </header>
+
+  <div id="loadingState" style="padding:80px 20px;text-align:center;color:var(--text-mute);font-size:13.5px;">
+    Loading latest pipeline results…
+  </div>
+
+  <div id="errorState" style="display:none;padding:60px 20px;text-align:center;">
+    <h2 style="margin:0 0 8px;">No results to show yet</h2>
+    <p id="errorMsg" style="color:var(--text-mute);font-size:13.5px;max-width:420px;margin:0 auto 20px;"></p>
+    <a href="/pipeline" class="btn primary" style="text-decoration:none;">Go to data &amp; pipeline →</a>
+  </div>
+
+  <div id="appRoot" style="display:none;">
+
+  <!-- ============ SIMULATOR TAB ============ -->
+  <div id="sim-view">
+    <div class="panel chart-card">
+      <div class="chart-head">
+        <div>
+          <div class="clock" id="clockTime">09:15 <span>session start</span></div>
+        </div>
+        <div class="price-now">Last price<br><b id="priceNow">—</b></div>
+      </div>
+      <svg id="priceChart" viewBox="0 0 900 380"></svg>
+
+      <div class="controls-row">
+        <button class="btn primary" id="playBtn">▶ Play</button>
+        <button class="btn" id="stepBackBtn">◂ Step</button>
+        <button class="btn" id="stepFwdBtn">Step ▸</button>
+        <button class="btn" id="jumpBtn">Jump to 10:00</button>
+        <button class="btn" id="resetBtn">Reset</button>
+        <div class="spacer"></div>
+        <div class="speed-group">
+          <button data-speed="1">1×</button>
+          <button data-speed="2" class="active">2×</button>
+          <button data-speed="4">4×</button>
+        </div>
+      </div>
+
+      <div class="legend-row">
+        <span class="item"><span class="tri up"></span> predicted up</span>
+        <span class="item"><span class="tri down"></span> predicted down</span>
+        <span class="item"><span class="dot" style="background:var(--neutral)"></span> predicted neutral</span>
+        <span class="item"><span class="dot" style="background:var(--up);box-shadow:0 0 0 2px rgba(79,191,138,.25)"></span> call correct</span>
+        <span class="item"><span class="dot" style="background:var(--down);box-shadow:0 0 0 2px rgba(224,102,90,.25)"></span> call wrong</span>
+        <span class="item"><span class="dot" style="background:var(--text-dim)"></span> pending (target not reached)</span>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="panel panel-pad side-block">
+        <div class="field" style="margin-bottom:12px;">
+          <label>Trading day</label>
+          <select id="daySelect"></select>
+        </div>
+        <div class="field">
+          <label>Forecaster</label>
+          <select id="modelSelect"></select>
+        </div>
+        <div class="model-tag"><span class="dot" id="modelTierDot"></span><span id="modelTierLabel">—</span></div>
+      </div>
+
+      <div class="panel panel-pad side-block">
+        <h2>Live scoreboard</h2>
+        <p class="sub">Resolved calls so far today</p>
+        <div class="stat-grid">
+          <div class="stat"><div class="k">Calls resolved</div><div class="v small" id="statN">0</div></div>
+          <div class="stat"><div class="k">Correct</div><div class="v small" id="statCorrect">0</div></div>
+          <div class="stat"><div class="k">Live accuracy</div><div class="v" id="statAcc">—</div></div>
+          <div class="stat"><div class="k">Reported test acc.</div><div class="v small" id="statReported">—</div></div>
+        </div>
+        <div class="accbar-wrap">
+          <div class="accbar-track"><div class="accbar-fill" id="accFill" style="width:0%"></div><div class="accbar-ref" id="accRef" style="left:0%"></div></div>
+          <div class="accbar-labels"><span>0%</span><span>live vs. reported (tick)</span><span>100%</span></div>
+        </div>
+      </div>
+
+      <div class="panel panel-pad side-block">
+        <h2>Forecaster card</h2>
+        <p class="sub" id="cardTier">—</p>
+        <div class="stat-grid">
+          <div class="stat"><div class="k">Direction acc.</div><div class="v small" id="cardAcc">—</div></div>
+          <div class="stat"><div class="k">F1 (macro)</div><div class="v small" id="cardF1">—</div></div>
+          <div class="stat"><div class="k">MASE</div><div class="v small" id="cardMase">—</div></div>
+          <div class="stat"><div class="k">Inference</div><div class="v small" id="cardLatency">—</div></div>
+        </div>
+      </div>
+
+      <div class="note">
+        <b>How the calls are generated —</b> the pipeline logs aggregate test-set metrics per model (experiment_log.csv) but doesn't persist a per-timestamp prediction trace. So each call here is drawn live from that model's own reported direction-accuracy against this day's true label: right with that probability, otherwise a wrong class at random. Over a full session the live accuracy converges to the reported number — it's a faithful replay of the model's real skill, not a recording of a specific inference run.
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ COMPARISON TAB ============ -->
+  <div id="cmp-view">
+
+    <div class="grid2">
+      <div class="panel panel-pad">
+        <h2>Direction accuracy by model</h2>
+        <p class="sub">Share of test-set decision points where the predicted 60-minute direction matched the outcome</p>
+        <svg id="accChart" viewBox="0 0 560 380" width="100%"></svg>
+        <p class="axis-note">Dashed line: 33.3% — random 3-class guess. Higher is better.</p>
+      </div>
+      <div class="panel panel-pad">
+        <h2>F1 (macro) by model</h2>
+        <p class="sub">Balances precision/recall across up / down / neutral equally</p>
+        <svg id="f1Chart" viewBox="0 0 560 380" width="100%"></svg>
+        <p class="axis-note">Higher is better.</p>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel panel-pad">
+        <h2>Scaled error (MASE)</h2>
+        <p class="sub">Mean absolute scaled error on the return forecast — 1.0 means "as good as the naive model"</p>
+        <svg id="maseChart" viewBox="0 0 560 380" width="100%"></svg>
+        <p class="axis-note">Lower is better. SVR/Naive are regression-only baselines.</p>
+      </div>
+      <div class="panel panel-pad">
+        <h2>Accuracy vs. inference cost</h2>
+        <p class="sub">Where each forecaster sits on the speed / skill trade-off</p>
+        <svg id="scatterChart" viewBox="0 0 560 380" width="100%"></svg>
+        <p class="axis-note">Bubble = model, colored by tier. Up-and-left is ideal.</p>
+      </div>
+    </div>
+
+    <div class="panel panel-pad" style="margin-bottom:18px;">
+      <h2>Probabilistic forecast quality — Moirai family</h2>
+      <p class="sub">Only the Moirai-tier models emit a predictive distribution, so only they can be scored on calibration</p>
+      <svg id="crpsChart" viewBox="0 0 900 220" width="100%"></svg>
+    </div>
+
+    <div class="panel panel-pad">
+      <h2>Full model ladder</h2>
+      <p class="sub">Every tier, every metric, as logged in results/tables/full_model_ladder_results.csv</p>
+      <div style="overflow-x:auto;">
+      <table class="metrics" id="metricsTable">
+        <thead><tr>
+          <th>Model</th><th class="num">MAE</th><th class="num">RMSE</th><th class="num">MASE</th>
+          <th class="num">Dir. acc.</th><th class="num">F1 macro</th><th class="num">CRPS</th>
+          <th class="num">80% cov.</th><th class="num">Inference (ms)</th>
+        </tr></thead>
+        <tbody id="metricsBody"></tbody>
+      </table>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="foot" id="footNote">Synthetic NIFTY-style tape · walk-forward split by day (70 / 15 / 15) · seed 42</footer>
+
+  </div><!-- /appRoot -->
+</div>
+
+<script>
+function getVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+// Everything below used to run at load time against data baked into the
+// page. It now runs once, inside initApp(), after the backend hands over
+// live data from /api/market and /api/metrics — see boot() at the bottom.
+function initApp(MARKET, METRICS){
+const DAYS = Object.keys(MARKET).sort();
+
+const TIER_COLOR = {
+  'Tier 1: Classical ML': getVar('--t1'),
+  'Tier 2: Deep Learning': getVar('--t2'),
+  'Tier 3: Transformer family': getVar('--t3'),
+  'Tier 4-5: Moirai family': getVar('--t4'),
+};
+
+const DIR_COLOR = { UP: getVar('--up'), DOWN: getVar('--down'), NEUTRAL: getVar('--neutral') };
+
+// models usable in the simulator: must have a real direction_accuracy
+const SIM_MODELS = METRICS.filter(m => m.direction_accuracy !== null);
+
+/* ---------------- tabs ---------------- */
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById('sim-view').style.display = tab==='sim' ? 'grid' : 'none';
+    document.getElementById('cmp-view').style.display = tab==='cmp' ? 'block' : 'none';
+    if(tab==='cmp' && !cmpBuilt){ buildComparison(); cmpBuilt = true; }
+  });
+});
+
+/* ---------------- populate selects ---------------- */
+const daySelect = document.getElementById('daySelect');
+const bySplit = {train:[], val:[], test:[]};
+DAYS.forEach(d=>bySplit[MARKET[d].split].push(d));
+const splitLabel = {train:'Train days', val:'Validation days', test:'Test days (held out)'};
+['test','val','train'].forEach(sp=>{
+  const og = document.createElement('optgroup');
+  og.label = splitLabel[sp];
+  bySplit[sp].forEach(d=>{
+    const opt = document.createElement('option');
+    opt.value = d; opt.textContent = d;
+    og.appendChild(opt);
+  });
+  daySelect.appendChild(og);
+});
+daySelect.value = bySplit.test[0];
+
+const modelSelect = document.getElementById('modelSelect');
+SIM_MODELS.forEach((m,i)=>{
+  const opt = document.createElement('option');
+  opt.value = i; opt.textContent = m.model;
+  modelSelect.appendChild(opt);
+});
+// default to the hero model
+let heroIdx = SIM_MODELS.findIndex(m=>m.model.includes('Optimized Moirai'));
+modelSelect.value = heroIdx >= 0 ? heroIdx : 0;
+
+/* ---------------- PRNG (deterministic per day+model) ---------------- */
+function hashStr(s){ let h=1779033703^s.length; for(let i=0;i<s.length;i++){ h=Math.imul(h^s.charCodeAt(i),3432918353); h=h<<13|h>>>19; } return ()=>{ h=Math.imul(h^h>>>16,2246822507); h=Math.imul(h^h>>>13,3266489909); return (h^=h>>>16)>>>0; }; }
+function mulberry32(seed){ return function(){ seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+function predictionsFor(day, modelIdx){
+  const m = SIM_MODELS[modelIdx];
+  const acc = m.direction_accuracy;
+  const seedFn = hashStr(day+'::'+m.model);
+  const rng = mulberry32(seedFn());
+  const wins = MARKET[day].windows;
+  return wins.map(w=>{
+    const trueLabel = w[2];
+    let pred;
+    if(rng() < acc){ pred = trueLabel; }
+    else{ const others = ['UP','DOWN','NEUTRAL'].filter(l=>l!==trueLabel); pred = others[rng()<0.5?0:1]; }
+    return { decisionT:w[0], targetT:w[1], trueLabel, pred, correct: pred===trueLabel };
+  });
+}
+
+/* ---------------- simulator state ---------------- */
+let barIdx = 0;      // current bar index into day.bars (0..75)
+let playing = false;
+let speed = 2;
+let timer = null;
+let dayBars, dayWindows, preds, barTimeToIdx;
+
+function loadDay(){
+  const day = daySelect.value;
+  dayBars = MARKET[day].bars; // [t,o,h,l,c,v]
+  dayWindows = MARKET[day].windows;
+  barTimeToIdx = {};
+  dayBars.forEach((b,i)=>barTimeToIdx[b[0]]=i);
+  preds = predictionsFor(day, parseInt(modelSelect.value,10));
+  preds.forEach(p=>{
+    p.decisionIdx = barTimeToIdx[p.decisionT];
+    p.targetIdx = barTimeToIdx[p.targetT];
+  });
+  barIdx = 0;
+  updateModelCard();
+  render();
+}
+
+function updateModelCard(){
+  const m = SIM_MODELS[parseInt(modelSelect.value,10)];
+  document.getElementById('modelTierDot').style.background = TIER_COLOR[m.tier];
+  document.getElementById('modelTierLabel').textContent = m.tier;
+  document.getElementById('cardTier').textContent = m.tier + ' · ' + m.model;
+  document.getElementById('cardAcc').textContent = pct(m.direction_accuracy);
+  document.getElementById('cardF1').textContent = m.F1_macro!==null? m.F1_macro.toFixed(3):'—';
+  document.getElementById('cardMase').textContent = m.MASE!==null? m.MASE.toFixed(2):'—';
+  document.getElementById('cardLatency').textContent = m.inference_ms.toFixed(3)+' ms';
+  document.getElementById('statReported').textContent = pct(m.direction_accuracy);
+}
+function pct(x){ return x===null||x===undefined ? '—' : (x*100).toFixed(1)+'%'; }
+
+daySelect.addEventListener('change', loadDay);
+modelSelect.addEventListener('change', loadDay);
+
+/* ---------------- playback controls ---------------- */
+document.getElementById('playBtn').addEventListener('click', ()=>{
+  playing = !playing;
+  document.getElementById('playBtn').textContent = playing ? '❚❚ Pause' : '▶ Play';
+  if(playing) tick(); else clearTimeout(timer);
+});
+document.getElementById('stepFwdBtn').addEventListener('click', ()=>{ stop(); advance(1); });
+document.getElementById('stepBackBtn').addEventListener('click', ()=>{ stop(); advance(-1); });
+document.getElementById('resetBtn').addEventListener('click', ()=>{ stop(); barIdx=0; render(); });
+document.getElementById('jumpBtn').addEventListener('click', ()=>{
+  stop();
+  const idx = barTimeToIdx['10:00'];
+  barIdx = idx!==undefined? idx : barIdx;
+  render();
+});
+document.querySelectorAll('.speed-group button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.speed-group button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    speed = parseInt(b.dataset.speed,10);
+  });
+});
+function stop(){ playing=false; document.getElementById('playBtn').textContent='▶ Play'; clearTimeout(timer); }
+function advance(n){ barIdx = Math.max(0, Math.min(dayBars.length-1, barIdx+n)); render(); }
+function tick(){
+  if(!playing) return;
+  if(barIdx >= dayBars.length-1){ stop(); return; }
+  advance(1);
+  timer = setTimeout(tick, 420/speed);
+}
+
+/* ---------------- render price chart ---------------- */
+const svgNS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs){ const e=document.createElementNS(svgNS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+function render(){
+  const svg = document.getElementById('priceChart');
+  svg.innerHTML='';
+  const W=900,H=380, ML=54, MR=16, MT=16, MB=34;
+  const plotW=W-ML-MR, plotH=H-MT-MB;
+  const n = dayBars.length;
+
+  const closes = dayBars.map(b=>b[4]);
+  const lo = Math.min(...dayBars.map(b=>b[3]));
+  const hi = Math.max(...dayBars.map(b=>b[2]));
+  const pad = (hi-lo)*0.08 || 1;
+  const yMin = lo-pad, yMax = hi+pad;
+
+  const x = i => ML + (i/(n-1))*plotW;
+  const y = v => MT + plotH - ((v-yMin)/(yMax-yMin))*plotH;
+
+  // gridlines (price)
+  const gridN=5;
+  for(let g=0; g<=gridN; g++){
+    const v = yMin + (g/gridN)*(yMax-yMin);
+    const yy = y(v);
+    svg.appendChild(el('line',{x1:ML,x2:W-MR,y1:yy,y2:yy,stroke:'var(--border-soft)','stroke-width':1}));
+    const t = el('text',{x:8,y:yy+4,'font-size':10,fill:'var(--text-dim)','font-family':'IBM Plex Mono, monospace'});
+    t.textContent = v.toFixed(0);
+    svg.appendChild(t);
+  }
+  // hour gridlines
+  const hourLabels = ['09:15','10:00','11:00','12:00','13:00','14:00','15:00','15:30'];
+  hourLabels.forEach(hl=>{
+    const idx = barTimeToIdx[hl];
+    if(idx===undefined) return;
+    const xx = x(idx);
+    svg.appendChild(el('line',{x1:xx,x2:xx,y1:MT,y2:H-MB,stroke:'var(--border-soft)','stroke-width':1}));
+    const t = el('text',{x:xx,y:H-10,'font-size':10,fill:'var(--text-dim)','text-anchor':'middle','font-family':'IBM Plex Mono, monospace'});
+    t.textContent = hl;
+    svg.appendChild(t);
+  });
+
+  // future (hidden) path — faint
+  if(barIdx < n-1){
+    let d2='';
+    for(let i=barIdx;i<n;i++){ d2 += (i===barIdx?'M':'L')+x(i).toFixed(1)+','+y(closes[i]).toFixed(1)+' '; }
+    svg.appendChild(el('path',{d:d2, fill:'none', stroke:'var(--text-dim)','stroke-width':1.4,'stroke-dasharray':'2,4', opacity:0.5}));
+  }
+  // revealed path
+  let d1='';
+  for(let i=0;i<=barIdx;i++){ d1 += (i===0?'M':'L')+x(i).toFixed(1)+','+y(closes[i]).toFixed(1)+' '; }
+  svg.appendChild(el('path',{d:d1, fill:'none', stroke:'var(--t4-hero)','stroke-width':2.2}));
+
+  // "now" cursor
+  svg.appendChild(el('line',{x1:x(barIdx),x2:x(barIdx),y1:MT,y2:H-MB,stroke:'var(--text)','stroke-width':1,'stroke-dasharray':'3,3',opacity:0.6}));
+  svg.appendChild(el('circle',{cx:x(barIdx),cy:y(closes[barIdx]),r:3.2,fill:'var(--t4-hero)'}));
+
+  // decision markers
+  preds.forEach(p=>{
+    if(p.decisionIdx===undefined || p.decisionIdx>barIdx) return;
+    const px = x(p.decisionIdx), py = y(closes[p.decisionIdx]);
+    const resolved = p.targetIdx!==undefined && p.targetIdx<=barIdx;
+    let fill, stroke;
+    if(!resolved){ fill='var(--panel)'; stroke='var(--text-dim)'; }
+    else{ fill = p.correct? 'var(--up)':'var(--down)'; stroke=fill; }
+
+    const g = el('g',{});
+    if(p.pred==='UP'){
+      g.appendChild(el('path',{d:`M ${px-5} ${py+5} L ${px+5} ${py+5} L ${px} ${py-6} Z`, fill:fill, stroke:stroke,'stroke-width':1}));
+    } else if(p.pred==='DOWN'){
+      g.appendChild(el('path',{d:`M ${px-5} ${py-5} L ${px+5} ${py-5} L ${px} ${py+6} Z`, fill:fill, stroke:stroke,'stroke-width':1}));
+    } else {
+      g.appendChild(el('circle',{cx:px,cy:py,r:4.5,fill:fill,stroke:stroke,'stroke-width':1}));
+    }
+    const title = el('title',{});
+    title.textContent = `decision ${p.decisionT} → target ${p.targetT}\npredicted ${p.pred}, actual ${resolved? p.trueLabel : 'pending'}`;
+    g.appendChild(title);
+    svg.appendChild(g);
+  });
+
+  // header labels
+  document.getElementById('clockTime').innerHTML = dayBars[barIdx][0] + ' <span>' + daySelect.value + '</span>';
+  document.getElementById('priceNow').innerHTML = closes[barIdx].toFixed(2);
+
+  // scoreboard
+  const resolved = preds.filter(p=>p.targetIdx!==undefined && p.targetIdx<=barIdx);
+  const correct = resolved.filter(p=>p.correct);
+  const liveAcc = resolved.length? correct.length/resolved.length : null;
+  document.getElementById('statN').textContent = resolved.length;
+  document.getElementById('statCorrect').textContent = correct.length;
+  document.getElementById('statAcc').textContent = liveAcc===null? '—' : (liveAcc*100).toFixed(1)+'%';
+  document.getElementById('statAcc').className = 'v ' + (liveAcc===null? '' : (liveAcc>=0.5?'up':(liveAcc<0.25?'down':'')));
+
+  const reportedAcc = SIM_MODELS[parseInt(modelSelect.value,10)].direction_accuracy;
+  document.getElementById('accFill').style.width = (liveAcc===null?0:liveAcc*100)+'%';
+  document.getElementById('accRef').style.left = (reportedAcc*100)+'%';
+}
+
+/* ---------------- comparison tab ---------------- */
+let cmpBuilt = false;
+function buildComparison(){
+  const dirModels = METRICS.filter(m=>m.direction_accuracy!==null);
+  barChart('accChart', dirModels, 'direction_accuracy', {fmt:v=>(v*100).toFixed(1)+'%', maxVal:0.4, refLine:0.333});
+  barChart('f1Chart', dirModels, 'F1_macro', {fmt:v=>v.toFixed(3), maxVal:0.35});
+  const maseModels = METRICS.filter(m=>m.MASE!==null);
+  barChart('maseChart', maseModels, 'MASE', {fmt:v=>v.toFixed(2), maxVal:11, lowerBetter:true});
+  scatterChart('scatterChart', dirModels);
+  crpsChart('crpsChart');
+  fillTable();
+}
+
+function modelDot(m){ return `<span class="dot" style="background:${TIER_COLOR[m.tier]};display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;"></span>`; }
+
+function barChart(svgId, data, key, opts){
+  const svg = document.getElementById(svgId); svg.innerHTML='';
+  const W=560,H=380, ML=170, MR=50, MT=10, MB=10;
+  const rowH = (H-MT-MB)/data.length;
+  const maxVal = opts.maxVal || Math.max(...data.map(d=>d[key]));
+  const plotW = W-ML-MR;
+  const xv = v => (v/maxVal)*plotW;
+
+  data.forEach((d,i)=>{
+    const yv = MT + i*rowH + rowH*0.22;
+    const barH = rowH*0.56;
+    const color = d.model.includes('Optimized Moirai') ? 'var(--t4-hero)' : TIER_COLOR[d.tier];
+    // label
+    const label = el('text',{x:ML-10,y:yv+barH*0.72,'text-anchor':'end','font-size':11.5,fill:'var(--text)','font-family':'Space Grotesk,sans-serif'});
+    label.textContent = d.model.length>22 ? d.model.slice(0,21)+'…' : d.model;
+    svg.appendChild(label);
+    // track
+    svg.appendChild(el('rect',{x:ML,y:yv,width:plotW,height:barH,fill:'var(--panel-2)',rx:3}));
+    // bar
+    const w = Math.max(2, xv(d[key]));
+    svg.appendChild(el('rect',{x:ML,y:yv,width:w,height:barH,fill:color,rx:3}));
+    // value
+    const vt = el('text',{x:ML+w+6,y:yv+barH*0.72,'font-size':11,fill:'var(--text-mute)','font-family':'IBM Plex Mono,monospace'});
+    vt.textContent = opts.fmt(d[key]);
+    svg.appendChild(vt);
+  });
+  if(opts.refLine!==undefined){
+    const rx = ML+xv(opts.refLine);
+    svg.appendChild(el('line',{x1:rx,x2:rx,y1:MT,y2:H-MB,stroke:'var(--text-dim)','stroke-width':1,'stroke-dasharray':'3,3'}));
+  }
+}
+
+function scatterChart(svgId, data){
+  const svg = document.getElementById(svgId); svg.innerHTML='';
+  const W=560,H=380, ML=48,MR=20,MT=16,MB=40;
+  const plotW=W-ML-MR, plotH=H-MT-MB;
+  const xMax = Math.max(...data.map(d=>d.inference_ms))*1.15 || 1;
+  const yMin=0.20, yMax=0.36;
+  const x = v => ML + (v/xMax)*plotW;
+  const y = v => MT + plotH - ((v-yMin)/(yMax-yMin))*plotH;
+
+  // axes gridlines
+  for(let g=0; g<=4; g++){
+    const v = yMin+(g/4)*(yMax-yMin);
+    const yy=y(v);
+    svg.appendChild(el('line',{x1:ML,x2:W-MR,y1:yy,y2:yy,stroke:'var(--border-soft)'}));
+    const t=el('text',{x:6,y:yy+4,'font-size':9.5,fill:'var(--text-dim)','font-family':'IBM Plex Mono,monospace'});
+    t.textContent=(v*100).toFixed(0)+'%'; svg.appendChild(t);
+  }
+  for(let g=0; g<=4; g++){
+    const v=(g/4)*xMax; const xx=x(v);
+    svg.appendChild(el('line',{x1:xx,x2:xx,y1:MT,y2:H-MB,stroke:'var(--border-soft)'}));
+    const t=el('text',{x:xx,y:H-14,'font-size':9.5,fill:'var(--text-dim)','text-anchor':'middle','font-family':'IBM Plex Mono,monospace'});
+    t.textContent=v.toFixed(2); svg.appendChild(t);
+  }
+  const xl=el('text',{x:ML+plotW/2,y:H-2,'font-size':10,fill:'var(--text-dim)','text-anchor':'middle'}); xl.textContent='inference time (ms)'; svg.appendChild(xl);
+
+  data.forEach(d=>{
+    const cx=x(d.inference_ms), cy=y(d.direction_accuracy);
+    const isHero = d.model.includes('Optimized Moirai');
+    const color = isHero? 'var(--t4-hero)' : TIER_COLOR[d.tier];
+    const c = el('circle',{cx,cy,r:isHero?7:5.5,fill:color,opacity:0.9,stroke: isHero?'var(--text)':'none','stroke-width':isHero?1:0});
+    const title=el('title',{}); title.textContent=`${d.model}\n${(d.direction_accuracy*100).toFixed(1)}% acc · ${d.inference_ms.toFixed(3)} ms`;
+    c.appendChild(title);
+    svg.appendChild(c);
+    const lbl=el('text',{x:cx+9,y:cy+3,'font-size':9.5,fill:'var(--text-mute)'});
+    lbl.textContent = d.model.replace('Moirai + Financial Encoder','Moirai+Fin.Enc').replace('Optimized Moirai (+Regime)','Opt. Moirai').replace('Moirai (reproduced, zero-shot-arch)','Moirai (0-shot)').replace('Logistic Regression','LogReg').replace('Random Forest','RandForest');
+    svg.appendChild(lbl);
+  });
+}
+
+function crpsChart(svgId){
+  const svg = document.getElementById(svgId); svg.innerHTML='';
+  const data = METRICS.filter(m=>m.CRPS!==null);
+  const W=900,H=220, ML=190, MR=60, MT=14, MB=14;
+  const rowH=(H-MT-MB)/data.length;
+  const plotW=W-ML-MR;
+  const maxCRPS = Math.max(...data.map(d=>d.CRPS))*1.15;
+  data.forEach((d,i)=>{
+    const yv = MT+i*rowH+rowH*0.18, barH=rowH*0.32;
+    // CRPS bar
+    const label=el('text',{x:ML-10,y:yv+barH,'text-anchor':'end','font-size':11.5,fill:'var(--text)'});
+    label.textContent=d.model; svg.appendChild(label);
+    svg.appendChild(el('rect',{x:ML,y:yv,width:plotW,height:barH,fill:'var(--panel-2)',rx:3}));
+    const w=(d.CRPS/maxCRPS)*plotW;
+    const color = d.model.includes('Optimized')?'var(--t4-hero)':'var(--t4)';
+    svg.appendChild(el('rect',{x:ML,y:yv,width:Math.max(2,w),height:barH,fill:color,rx:3}));
+    const vt=el('text',{x:ML+w+6,y:yv+barH*0.85,'font-size':10.5,fill:'var(--text-mute)','font-family':'IBM Plex Mono,monospace'});
+    vt.textContent='CRPS '+d.CRPS.toFixed(4); svg.appendChild(vt);
+    // coverage bar
+    const yv2=yv+barH+6, barH2=barH*0.7;
+    svg.appendChild(el('rect',{x:ML,y:yv2,width:plotW*0.5,height:barH2,fill:'var(--panel-2)',rx:3}));
+    const w2=(d.coverage_80pct)*plotW*0.5;
+    svg.appendChild(el('rect',{x:ML,y:yv2,width:Math.max(2,w2),height:barH2,fill:'var(--t2)',rx:3}));
+    // target line at 80%
+    const tx=ML+0.8*plotW*0.5;
+    svg.appendChild(el('line',{x1:tx,x2:tx,y1:yv2,y2:yv2+barH2,stroke:'var(--text)','stroke-width':1,'stroke-dasharray':'2,2'}));
+    const vt2=el('text',{x:ML+plotW*0.5+8,y:yv2+barH2*0.85,'font-size':10.5,fill:'var(--text-mute)','font-family':'IBM Plex Mono,monospace'});
+    vt2.textContent='80% cov. '+(d.coverage_80pct*100).toFixed(1)+'%'; svg.appendChild(vt2);
+  });
+}
+
+function fillTable(){
+  const tbody = document.getElementById('metricsBody');
+  tbody.innerHTML='';
+  let lastTier=null;
+  METRICS.forEach(m=>{
+    if(m.tier!==lastTier){
+      const tr=document.createElement('tr'); tr.className='tier-row';
+      const td=document.createElement('td'); td.colSpan=9; td.textContent=m.tier;
+      tr.appendChild(td); tbody.appendChild(tr); lastTier=m.tier;
+    }
+    const tr=document.createElement('tr');
+    if(m.model.includes('Optimized Moirai')) tr.className='hero';
+    const fmt = v => v===null||v===undefined ? '—' : (typeof v==='number'? v.toFixed(v<1?4:2) : v);
+    tr.innerHTML = `<td class="model-cell">${modelDot(m)}${m.model}${m.model.includes('Optimized Moirai')?'<span class="pill">this work</span>':''}</td>
+      <td class="num">${fmt(m.MAE)}</td><td class="num">${fmt(m.RMSE)}</td><td class="num">${fmt(m.MASE)}</td>
+      <td class="num">${m.direction_accuracy!==null?(m.direction_accuracy*100).toFixed(1)+'%':'—'}</td>
+      <td class="num">${fmt(m.F1_macro)}</td><td class="num">${fmt(m.CRPS)}</td>
+      <td class="num">${m.coverage_80pct!==null?(m.coverage_80pct*100).toFixed(1)+'%':'—'}</td>
+      <td class="num">${m.inference_ms.toFixed(3)}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ---------------- init ---------------- */
+loadDay();
+window.addEventListener('resize', render);
+
+} // end initApp
+
+/* ---------------- boot: pull live data from the backend ---------------- */
+(async function boot(){
+  try{
+    const [mRes, tRes] = await Promise.all([fetch('/api/market'), fetch('/api/metrics')]);
+    if(!mRes.ok){ const e = await mRes.json().catch(()=>({})); throw new Error(e.error || ('Failed to load market data (HTTP '+mRes.status+')')); }
+    if(!tRes.ok){ const e = await tRes.json().catch(()=>({})); throw new Error(e.error || ('Failed to load model metrics (HTTP '+tRes.status+')')); }
+    const market = await mRes.json();
+    const metrics = await tRes.json();
+    if(!market || Object.keys(market).length===0) throw new Error('No processed trading days found in data/processed yet. Upload a dataset and run the pipeline.');
+    if(!metrics || metrics.length===0) throw new Error('No trained model results found in results/tables yet. Run the pipeline first.');
+
+    document.getElementById('loadingState').style.display='none';
+    document.getElementById('appRoot').style.display='block';
+    initApp(market, metrics);
+
+    fetch('/api/meta').then(r=>r.json()).then(meta=>{
+      const foot = document.getElementById('footNote');
+      if(foot && meta){
+        foot.textContent = 'Live from disk · raw data updated ' + (meta.raw_data_updated||'—') +
+          ' · model results updated ' + (meta.ladder_updated||'—');
+      }
+    }).catch(()=>{});
+  } catch(err){
+    document.getElementById('loadingState').style.display='none';
+    document.getElementById('errorState').style.display='block';
+    document.getElementById('errorMsg').textContent = err.message;
+  }
+})();
+</script>
+</body>
+</html>

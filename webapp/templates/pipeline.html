@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Data & pipeline — Intraday Direction Ladder</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c1420; --panel:#121b2b; --panel-2:#0f1826; --border:#243350; --border-soft:#1b2740;
+  --text:#e7ecf6; --text-mute:#8695b3; --text-dim:#5c6b8a;
+  --up:#4fbf8a; --down:#e0665a; --t4:#dba34e; --t4-hero:#f0c674;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif;}
+.wrap{max-width:900px;margin:0 auto;padding:28px 22px 60px;}
+header.top{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;border-bottom:1px solid var(--border-soft);padding-bottom:16px;margin-bottom:22px;}
+h1{font-size:20px;margin:0 0 4px;}
+p.lede{color:var(--text-mute);font-size:13.5px;margin:0;max-width:520px;}
+a.back{color:var(--text-mute);font-size:13px;text-decoration:none;}
+a.back:hover{color:var(--text);}
+
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-bottom:18px;}
+.panel h2{font-size:14.5px;margin:0 0 4px;}
+.panel .sub{font-size:12px;color:var(--text-dim);margin:0 0 16px;}
+
+.dropzone{border:1.5px dashed var(--border);border-radius:8px;padding:26px;text-align:center;color:var(--text-mute);font-size:13px;cursor:pointer;transition:border-color .15s;}
+.dropzone.drag{border-color:var(--t4);color:var(--text);}
+.dropzone input{display:none;}
+.filename{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--t4-hero);margin-top:10px;}
+
+.btn{background:var(--panel-2);border:1px solid var(--border);color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:500;padding:9px 16px;border-radius:7px;cursor:pointer;}
+.btn:hover{border-color:var(--t4);}
+.btn.primary{background:var(--t4);color:#191305;border-color:var(--t4);font-weight:600;}
+.btn.primary:hover{background:var(--t4-hero);}
+.btn:disabled{opacity:0.4;cursor:not-allowed;}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;}
+
+.msg{font-size:12.5px;margin-top:12px;padding:10px 12px;border-radius:7px;display:none;}
+.msg.ok{display:block;background:rgba(79,191,138,0.1);color:var(--up);border:1px solid rgba(79,191,138,0.25);}
+.msg.err{display:block;background:rgba(224,102,90,0.1);color:var(--down);border:1px solid rgba(224,102,90,0.25);}
+
+.stages{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+.stages li{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-mute);}
+.stages li .icon{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;}
+.stages li.done .icon{background:var(--up);border-color:var(--up);color:#0c1420;}
+.stages li.running .icon{border-color:var(--t4);color:var(--t4);}
+.stages li.failed .icon{background:var(--down);border-color:var(--down);color:#0c1420;}
+.stages li.done, .stages li.running{color:var(--text);}
+.stages li.failed{color:var(--down);}
+
+.console{background:#070c14;border:1px solid var(--border-soft);border-radius:8px;padding:12px 14px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text-mute);height:260px;overflow-y:auto;white-space:pre-wrap;line-height:1.55;}
+.console .err-line{color:var(--down);}
+
+.done-banner{display:none;margin-top:14px;padding:12px 14px;border-radius:8px;background:rgba(240,198,116,0.1);border:1px solid rgba(240,198,116,0.3);font-size:13px;}
+.done-banner a{color:var(--t4-hero);font-weight:600;text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Data &amp; pipeline</h1>
+      <p class="lede">Upload a new raw_data.csv and run the full pipeline — cleaning through Tier 1–5 training — right from the browser. The dashboard reads live from whatever this produces.</p>
+    </div>
+    <a class="back" href="/">← back to dashboard</a>
+  </header>
+
+  <div class="panel">
+    <h2>1. Upload dataset</h2>
+    <p class="sub">Must be a CSV with at least: timestamp, open, high, low, close, volume (vwap / india_vix optional, matching data/raw/raw_data.csv)</p>
+    <div class="dropzone" id="dropzone">
+      Drop a .csv here, or click to browse
+      <input type="file" id="fileInput" accept=".csv">
+      <div class="filename" id="fileName"></div>
+    </div>
+    <div class="row">
+      <button class="btn primary" id="uploadBtn" disabled>Upload dataset</button>
+    </div>
+    <div class="msg" id="uploadMsg"></div>
+  </div>
+
+  <div class="panel">
+    <h2>2. Run pipeline</h2>
+    <p class="sub">Clean → engineer features → build windows &amp; split → leakage gate → train Tier 1 → train Tiers 2–5. Stops immediately if the leakage gate fails.</p>
+    <ul class="stages" id="stagesList"></ul>
+    <div class="row">
+      <button class="btn primary" id="runBtn">Run pipeline</button>
+    </div>
+    <div class="msg" id="runMsg"></div>
+    <div class="done-banner" id="doneBanner">✓ Pipeline finished. <a href="/">Open the updated dashboard →</a></div>
+    <div class="console" id="console" style="margin-top:14px;"></div>
+  </div>
+</div>
+
+<script>
+const STAGE_DEFS = [
+  {id:'clean', label:'Clean data'},
+  {id:'features', label:'Engineer features'},
+  {id:'windows', label:'Build windows + split'},
+  {id:'leakage', label:'Leakage gate'},
+  {id:'classical', label:'Train Tier 1 (classical)'},
+  {id:'deep', label:'Train Tiers 2-5 (deep learning)'},
+];
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const fileNameEl = document.getElementById('fileName');
+const uploadBtn = document.getElementById('uploadBtn');
+const uploadMsg = document.getElementById('uploadMsg');
+const runBtn = document.getElementById('runBtn');
+const runMsg = document.getElementById('runMsg');
+const stagesList = document.getElementById('stagesList');
+const consoleEl = document.getElementById('console');
+const doneBanner = document.getElementById('doneBanner');
+
+let selectedFile = null;
+
+function renderStages(stages){
+  stagesList.innerHTML = (stages && stages.length ? stages : STAGE_DEFS.map(s=>({...s, status:'pending'})))
+    .map(s=>{
+      const icon = s.status==='done'?'✓':(s.status==='failed'?'✕':(s.status==='running'?'…':''));
+      return `<li class="${s.status}"><span class="icon">${icon}</span>${s.label}</li>`;
+    }).join('');
+}
+renderStages(null);
+
+dropzone.addEventListener('click', ()=>fileInput.click());
+['dragenter','dragover'].forEach(ev=>dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.remove('drag'); }));
+dropzone.addEventListener('drop', e=>{
+  if(e.dataTransfer.files.length){ selectedFile = e.dataTransfer.files[0]; onFileChosen(); }
+});
+fileInput.addEventListener('change', ()=>{
+  if(fileInput.files.length){ selectedFile = fileInput.files[0]; onFileChosen(); }
+});
+function onFileChosen(){
+  fileNameEl.textContent = selectedFile.name;
+  uploadBtn.disabled = false;
+  uploadMsg.className = 'msg';
+}
+
+uploadBtn.addEventListener('click', async ()=>{
+  if(!selectedFile) return;
+  uploadBtn.disabled = true;
+  uploadMsg.className = 'msg';
+  const fd = new FormData();
+  fd.append('dataset', selectedFile);
+  try{
+    const res = await fetch('/api/upload', {method:'POST', body:fd});
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Upload failed');
+    uploadMsg.className = 'msg ok';
+    uploadMsg.textContent = `Uploaded. Columns detected: ${data.columns.join(', ')}`;
+  }catch(err){
+    uploadMsg.className = 'msg err';
+    uploadMsg.textContent = err.message;
+  }finally{
+    uploadBtn.disabled = false;
+  }
+});
+
+let polling = null;
+
+runBtn.addEventListener('click', async ()=>{
+  runMsg.className='msg'; doneBanner.style.display='none'; consoleEl.textContent='';
+  runBtn.disabled = true;
+  try{
+    const res = await fetch('/api/run', {method:'POST'});
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Could not start pipeline');
+    startPolling();
+  }catch(err){
+    runMsg.className='msg err';
+    runMsg.textContent = err.message;
+    runBtn.disabled = false;
+  }
+});
+
+function startPolling(){
+  if(polling) clearInterval(polling);
+  polling = setInterval(pollStatus, 900);
+  pollStatus();
+}
+
+async function pollStatus(){
+  try{
+    const status = await (await fetch('/api/status')).json();
+    renderStages(status.stages);
+    consoleEl.innerHTML = status.log.map(l => l.startsWith('[') && l.includes('ERROR') ? `<span class="err-line">${escapeHtml(l)}</span>` : escapeHtml(l)).join('\n');
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+    if(!status.running){
+      clearInterval(polling); polling = null;
+      runBtn.disabled = false;
+      if(status.error){
+        runMsg.className='msg err';
+        runMsg.textContent = status.error;
+      } else if(status.finished_at){
+        doneBanner.style.display='block';
+      }
+    }
+  }catch(err){ /* transient network hiccup while polling — ignore */ }
+}
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+// pick up an already-running job on page load (e.g. after a refresh)
+(async function(){
+  try{
+    const status = await (await fetch('/api/status')).json();
+    renderStages(status.stages);
+    if(status.running){ runBtn.disabled = true; startPolling(); }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
