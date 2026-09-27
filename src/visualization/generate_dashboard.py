@@ -110,6 +110,55 @@ def build_market_json(data_dir: Path) -> dict:
     return out_days
 
 
+
+def build_prediction_json(data_dir: Path, results_dir: Path, day: str | None = None, model: str | None = None):
+    """Load the persisted timestamp-level prediction trace.
+
+    With day/model filters this is small enough for the interactive simulator;
+    without filters it returns a compact day -> model -> window structure for
+    the standalone HTML export.
+    """
+    trace_path = results_dir / "predictions" / "prediction_trace.csv"
+    if not trace_path.exists():
+        raise FileNotFoundError(
+            f"Missing prediction trace: {trace_path}. Run the model stages again "
+            "so timestamp-level predictions are persisted."
+        )
+    df = pd.read_csv(trace_path)
+    for col in ["pred_return", "pred_prob_down", "pred_prob_neutral", "pred_prob_up",
+                "confidence", "q10", "q50", "q90", "true_return"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    if day is not None:
+        df = df[df["date"].astype(str) == str(day)]
+    if model is not None:
+        df = df[df["model"] == model]
+    if df.empty:
+        return [] if (day is not None or model is not None) else {}
+
+    cols = ["date", "decision_ts", "target_ts", "model", "split", "true_return",
+            "true_direction", "pred_return", "pred_direction", "pred_prob_down",
+            "pred_prob_neutral", "pred_prob_up", "confidence", "q10", "q50", "q90"]
+    df = df[[c for c in cols if c in df.columns]].copy()
+    records = df.to_dict(orient="records")
+    for r in records:
+        for k, v in list(r.items()):
+            if isinstance(v, float) and math.isnan(v):
+                r[k] = None
+
+    if day is not None or model is not None:
+        return records
+
+    out = {}
+    for r in records:
+        d = str(r.pop("date"))
+        m = r.pop("model")
+        r.pop("true_return", None)
+        r.pop("true_direction", None)
+        r.pop("split", None)
+        out.setdefault(d, {}).setdefault(m, []).append(r)
+    return out
+
 # Which tier each model belongs to, used only to assemble
 # full_model_ladder_results.csv if that merged file doesn't exist yet
 # (run_classical_baselines.py and run_deep_learning_tiers.py each write
@@ -205,16 +254,16 @@ def build_metrics_json(results_dir: Path) -> list:
     return records
 
 
-def render(template_path: Path, market: dict, metrics: list, output_path: Path) -> None:
+def render(template_path: Path, market: dict, metrics: list, predictions: dict, output_path: Path) -> None:
     template = template_path.read_text(encoding="utf-8")
-    if "__MARKET_DATA__" not in template or "__MODELS_METRICS__" not in template:
+    if "__MARKET_DATA__" not in template or "__MODELS_METRICS__" not in template or "__PREDICTION_DATA__" not in template:
         raise ValueError(
-            "Template is missing the __MARKET_DATA__ / __MODELS_METRICS__ "
-            "placeholders — did dashboard_template.html get edited by hand?"
+            "Template is missing the __MARKET_DATA__ / __MODELS_METRICS__ / "
+            "__PREDICTION_DATA__ placeholders — did dashboard_template.html get edited by hand?"
         )
     html = template.replace("__MARKET_DATA__", json.dumps(market)).replace(
         "__MODELS_METRICS__", json.dumps(metrics)
-    )
+    ).replace("__PREDICTION_DATA__", json.dumps(predictions))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
 
@@ -252,12 +301,13 @@ def main():
 
     market = build_market_json(data_dir)
     metrics = build_metrics_json(results_dir)
+    predictions = build_prediction_json(data_dir, results_dir)
 
     n_days = len(market)
     n_models = len(metrics)
     print(f"[dashboard] {n_days} trading day(s), {n_models} model row(s) in the ladder")
 
-    render(args.template, market, metrics, output_path)
+    render(args.template, market, metrics, predictions, output_path)
     print(f"[dashboard] wrote        : {output_path}")
 
 

@@ -29,10 +29,21 @@ empty, the dashboard shows an empty-state screen with a link to `/pipeline`.
 ## How it stays in sync with the pipeline
 
 `webapp/app.py` doesn't have its own copy of the data-loading logic — it
-imports `build_market_json` / `build_metrics_json` / `ensure_full_ladder_table`
-directly from `src/visualization/generate_dashboard.py`. Every `GET
-/api/market` and `GET /api/metrics` call re-reads the CSV/`.npy` files on
-disk and rebuilds the JSON from scratch, so:
+imports `build_market_json` / `build_metrics_json` / `build_prediction_json` / `ensure_full_ladder_table`
+directly from `src/visualization/generate_dashboard.py`. The simulator also
+requests `/api/predictions` for the selected date/model, reading the persisted
+timestamp-level trace instead of fabricating a prediction from aggregate
+accuracy.
+
+- Uploading a new dataset and clicking **Run pipeline** on `/pipeline` re-runs
+  Stages 2–6 (clean → features → windows → leakage gate → train Tier 1 → train Tiers 2-5) as real subprocesses, streams their stdout into a log
+  panel, and stops immediately if the leakage gate fails.
+- The moment training finishes, reloading `/` shows the new data and the
+  new per-window prediction trace — there is no intermediate HTML file to
+  regenerate.
+- The standalone `python src/visualization/generate_dashboard.py` script
+  still works if you just want a single static HTML file to email or archive
+  instead of running a server.
 
 - Uploading a new dataset and clicking **Run pipeline** on `/pipeline` re-runs
   Stages 2–6 (clean → features → windows → leakage gate → train Tier 1 →
@@ -52,6 +63,7 @@ disk and rebuilds the JSON from scratch, so:
 | `/pipeline` | GET | Upload + run control page |
 | `/api/market` | GET | Live JSON of every trading day's bars + prediction windows |
 | `/api/metrics` | GET | Live JSON of the full model ladder |
+| `/api/predictions` | GET | Timestamp-level predictions for one `day` + `model` |
 | `/api/meta` | GET | Last-modified timestamps for the raw data and results |
 | `/api/upload` | POST | Multipart CSV upload → `data/raw/raw_data.csv` (old file backed up, not deleted) |
 | `/api/run` | POST | Starts the pipeline in a background thread (409 if one is already running) |
@@ -67,3 +79,8 @@ disk and rebuilds the JSON from scratch, so:
 - Uploaded CSVs must have at least `timestamp, open, high, low, close,
   volume` columns; `vwap` and `india_vix` are optional, matching the shape
   of the original `data/raw/raw_data.csv`.
+
+
+### Future 2025–2026 mode
+
+The dashboard supports a **Future scenario (2025–2026)** mode. Select a future weekday, an historical seed day, a trained model, and a checkpoint. The backend builds a recursive intraday scenario from the historical seed context and rolling 45-minute context → 60-minute horizon forecasts. This is a scenario projection, not observed future market data.
