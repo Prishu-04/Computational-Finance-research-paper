@@ -50,13 +50,6 @@ app = Flask(__name__)
 
 
 def _sanitize_nans(obj):
-    """Recursively replace float NaN/inf with None so json.dumps produces
-    strictly valid JSON. A bare NaN/Infinity token (Python's json module
-    writes these by default) is not valid JSON and breaks JSON.parse in
-    the browser -- this is a defense-in-depth net on top of the NaN
-    handling already done in generate_dashboard.py / future_forecast.py,
-    for any path that computes a value fresh (no CSV round-trip to
-    normalize dtypes first)."""
     if isinstance(obj, float):
         return None if (math.isnan(obj) or math.isinf(obj)) else obj
     if isinstance(obj, dict):
@@ -204,14 +197,6 @@ def api_future_forecast():
 
 @app.route("/api/future_forecast_ensemble")
 def api_future_forecast_ensemble():
-    """Same idea as /api/future_forecast, but seeded from the COMPLETE
-    historical dataset (every day, or n_paths most recent days) instead of
-    one arbitrary seed day -- returns a p10/p50/p90 band per decision
-    checkpoint plus the full fan of per-seed-day paths. Slower: each seed
-    day re-runs the full recursive generator, so this scales with n_paths.
-    Defaults to a capped n_paths=15 so the request stays responsive; pass
-    n_paths=0 (or a number >= the dataset size) to use every historical day.
-    """
     try:
         future_date = request.args.get("date")
         model = request.args.get("model")
@@ -233,14 +218,6 @@ def api_future_forecast_ensemble():
 
 @app.route("/api/live_simulate")
 def api_live_simulate():
-    """Rolling/live-inference replay: feeds data/raw/raw_data.csv through
-    LiveForecaster bar-by-bar (real bars only, nothing self-generated) and
-    reports resolved predictions + accuracy. Pass split=test to restrict to
-    the walk-forward test days (reproduces the offline ladder metric
-    exactly, as a correctness check); split=all replays every day (slower,
-    and mixes in-sample train-day accuracy with genuine out-of-sample
-    accuracy, so treat that number as a sanity check, not a result).
-    """
     try:
         model = request.args.get("model")
         split = request.args.get("split", "test")

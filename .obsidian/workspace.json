@@ -11,10 +11,10 @@
             "id": "88af8a8ed0b38979",
             "type": "leaf",
             "state": {
-              "type": "empty",
+              "type": "graph",
               "state": {},
-              "icon": "lucide-file",
-              "title": "New tab"
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
             }
           }
         ]
@@ -79,7 +79,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "a3d7a1030da4ac0d",
@@ -186,7 +187,19 @@
   },
   "active": "88af8a8ed0b38979",
   "lastOpenFiles": [
-    "requirements.txt",
+    "venv/Scripts/deactivate.bat",
+    "venv/Scripts/activate.bat",
+    "venv/Scripts/Activate.ps1",
+    "venv/Scripts/activate.fish",
+    "venv/Scripts/activate",
+    "venv/Lib/site-packages/pip-26.2.1.dist-info/REQUESTED",
+    "venv/Lib/site-packages/pip-26.2.1.dist-info/INSTALLER",
+    "venv/Scripts/pip3.14.exe",
+    "venv/Scripts/pip3.exe",
+    "venv/Scripts/pip.exe",
+    "venv/Lib/site-packages/pip/_vendor/urllib3/util/__pycache__/__init__.cpython-314.pyc",
+    "venv/Lib/site-packages/pip-26.2.1.dist-info/licenses/src/pip/_vendor/idna/LICENSE.md",
+    "venv/Lib/site-packages/pip/_vendor/idna/LICENSE.md",
     "README_dataset.md",
     "README.md",
     "Pasted image 20260918124300.png",
@@ -194,17 +207,7 @@
     "Pasted image 20260918123110.png",
     "Pasted image 20260918122853.png",
     "Pasted image 20260918121612.png",
-    "src/preprocessing/__init__.py",
     "src/preprocessing/Preprocessing Logs.md",
-    "src/preprocessing/Datacleaning.py",
-    "src/models/__init__.py",
-    "src/models/xgboost",
-    "src/models/transformer",
-    "src/models/svr",
-    "src/models/random_forest",
-    "src/models/run_deep_learning_tiers.py",
-    "src/models/run_classical_baselines.py",
-    "src/models/patchtst",
     "src/features/Feature_logs.md",
     "src/evaluation/Leakage Test Logs.md",
     "src/data/Window Logs.md",

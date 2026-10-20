@@ -1,13 +1,3 @@
-"""
-Trains and evaluates Tiers 2-5:
-  Tier 2: LSTM, GRU
-  Tier 3: Transformer, PatchTST, CARD
-  Tier 4: Moirai (reproduced architecture, trained from scratch)
-  Tier 5: Optimized Moirai (+ ablation: Moirai+FinancialEncoder only)
-
-Same data, same splits, same loss weighting, same epoch/patience budget
-for every model.
-"""
 import sys
 sys.path.insert(0, ".")
 

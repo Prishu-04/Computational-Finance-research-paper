@@ -1,10 +1,3 @@
-"""
-Shared training + evaluation harness for Tiers 2-5 (LSTM, GRU, Transformer,
-PatchTST, CARD, Moirai, Optimized Moirai). Every model uses this SAME
-harness -- same optimizer, same epochs budget, same early stopping, same
-loss weighting -- so architecture is the only thing that varies between
-runs, per the roadmap's fairness rule.
-"""
 import time
 import numpy as np
 import torch
@@ -76,13 +69,6 @@ def pinball_loss_torch(y_true, y_pred_q, quantiles):
 
 def train_model(model, train_loader, val_loader, epochs=25, lr=1e-3,
                  probabilistic=False, patience=5, verbose_name=""):
-    """
-    Generic training loop.
-      - Non-probabilistic models: loss = MSE(return) + CrossEntropy(direction)
-      - Probabilistic models (Moirai/Optimized Moirai): loss =
-        pinball_loss(return quantiles) + CrossEntropy(direction)
-    Early stopping on validation loss.
-    """
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     ce = nn.CrossEntropyLoss()
     mse = nn.MSELoss()

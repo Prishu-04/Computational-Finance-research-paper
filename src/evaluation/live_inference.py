@@ -1,37 +1,3 @@
-"""Rolling / live inference for REAL (not recursively-generated) market data.
-
-This is the deploy-ready counterpart to future_forecast.py's scenario
-generator. The rule that distinguishes this module from that one:
-
-    ONLY REAL, OBSERVED BARS EVER BECOME MODEL CONTEXT.
-
-No prediction is ever fed back in as a synthetic future bar. A forecast is
-made the moment enough real context exists (>= CONTEXT_BARS real bars so
-far today), then it sits "pending" until the real bar at its target
-timestamp actually arrives, at which point it is resolved against the true
-outcome. This is the mode you would actually run once real 2025/26 (or any
-live) data starts printing -- future_forecast.py's recursive scenario mode
-is for exploring "what might a day look like" *before* real data exists;
-this module is for genuinely forecasting the next unseen 60-minute window
-from data that is actually happening.
-
-Two ways to use it:
-
-  LiveForecaster   -- a small stateful class: ingest_bar() with each new
-                       real 5-min bar as it prints, get back any freshly
-                       resolved predictions (with their realized error).
-                       This is what you'd wire up to a real market-data feed
-                       (or to a websocket handler, a cron job polling a
-                       broker API, etc).
-
-  simulate_live()  -- replays data/raw/raw_data.csv bar-by-bar through
-                       LiveForecaster as if it were arriving live, purely as
-                       a validation harness: it proves the streaming code
-                       path never touches a self-generated bar, and gives
-                       you an honest accuracy number to compare against the
-                       offline walk-forward test-set metrics in
-                       results/tables/full_model_ladder_results.csv.
-"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -50,11 +16,6 @@ RAW_COLS = ["date", "timestamp", "open", "high", "low", "close", "volume", "vwap
 
 
 def _load_tau(project_root: Path) -> float:
-    """Recompute tau exactly the way the offline pipeline does (Stage 4,
-    src/data/windows.py: fit on the TRAIN split only). This keeps the
-    realized UP/DOWN/NEUTRAL labels used to score live predictions
-    consistent with how every model in the ladder was trained and
-    evaluated -- the whole point of Stage 5's leakage gate."""
     proc = Path(project_root) / "data" / "processed"
     y_return = np.load(proc / "y_return.npy")
     train_mask = np.load(proc / "train_mask.npy")
@@ -62,11 +23,6 @@ def _load_tau(project_root: Path) -> float:
 
 
 class LiveForecaster:
-    """Stateful rolling forecaster. Feed it real bars one at a time via
-    ingest_bar(); it predicts as soon as it has enough real context, and
-    resolves each pending prediction against the real bar that later lands
-    on its target timestamp."""
-
     def __init__(self, project_root: Path, model_name: str, max_buffer_bars: int = 200):
         self.project_root = Path(project_root)
         self.model_name = model_name
@@ -78,10 +34,6 @@ class LiveForecaster:
         self.resolved: list[dict] = []
 
     def ingest_bar(self, bar: dict) -> list[dict]:
-        """bar: a REAL, observed 5-min OHLCV(+vwap, india_vix) bar, as a
-        dict with keys matching RAW_COLS. Returns any predictions resolved
-        by this bar (i.e. this bar's timestamp equals a pending
-        prediction's target_ts)."""
         row = {c: bar.get(c) for c in RAW_COLS}
         self.buffer.loc[len(self.buffer)] = row
         if len(self.buffer) > self.max_buffer_bars:

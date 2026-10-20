@@ -1,23 +1,3 @@
-"""
-Architectures for Tiers 2-5, matching the roadmap's conceptual progression:
-
-  LSTM / GRU      -> sequential recurrent baselines
-  Transformer     -> full self-attention over the 9-bar context
-  PatchTST        -> patches the sequence, CHANNEL-INDEPENDENT (shared weights,
-                     no cross-channel mixing) -- the limitation CARD fixes
-  CARD            -> same patches, but adds explicit CHANNEL-ALIGNED ATTENTION
-                     across the 15 feature-channels
-  Moirai          -> "any-variate" attention: time-patches AND channels are
-                     combined into ONE joint token sequence with full
-                     self-attention, plus a probabilistic (quantile) head.
-                     NOTE: this reproduces the ARCHITECTURE, trained from
-                     scratch on this dataset -- it is NOT the pretrained
-                     Moirai model (that needs LOTSA-scale pretraining data
-                     and compute we don't have here). This is "Level A:
-                     architecture reproduction" per your own roadmap Section 18.
-  Optimized Moirai -> Moirai + financial feature encoder + intraday regime
-                     embedding (Candidates A + C from the roadmap)
-"""
 import torch
 import torch.nn as nn
 
@@ -66,10 +46,6 @@ class TransformerModel(nn.Module):
 
 # ------------------------------------------------------------------ PatchTST
 class PatchTSTModel(nn.Module):
-    """Channel-independent: every one of the 15 feature-channels is patched
-    and encoded with the SAME shared weights, with no attention across
-    channels -- this is the limitation the roadmap says CARD addresses."""
-
     def __init__(self, patch_len=3, d_model=16, nhead=2):
         super().__init__()
         assert CONTEXT_BARS % patch_len == 0
@@ -99,11 +75,6 @@ class PatchTSTModel(nn.Module):
 
 # ---------------------------------------------------------------------- CARD
 class CARDModel(nn.Module):
-    """Same per-channel patch encoding as PatchTST, but adds explicit
-    channel-ALIGNED attention (self-attention with channels as tokens) so
-    the model can learn cross-variable dependencies (e.g. VIX <-> return)
-    that PatchTST's channel independence cannot capture."""
-
     def __init__(self, patch_len=3, d_model=16, nhead=2):
         super().__init__()
         self.n_patches = CONTEXT_BARS // patch_len
@@ -135,18 +106,6 @@ class CARDModel(nn.Module):
 
 # -------------------------------------------------------------------- Moirai
 class MoiraiModel(nn.Module):
-    """Reproduced Moirai-style architecture (Level A -- trained from scratch
-    here, NOT the pretrained model): time-patches from every channel are
-    tagged with a learned channel-id embedding and combined into ONE joint
-    token sequence, so a single self-attention stack can attend across BOTH
-    time and variate dimensions simultaneously ("any-variate attention").
-    Outputs quantile forecasts (probabilistic) instead of a point estimate.
-
-    use_financial_encoder / use_regime turn this into "Optimized Moirai"
-    (Candidates A + C from the roadmap) -- kept as flags on the same class
-    so the two are directly comparable in an ablation.
-    """
-
     def __init__(self, patch_len=3, d_model=24, nhead=4, layers=2,
                  use_financial_encoder=False, use_regime=False, n_regime_buckets=4):
         super().__init__()
@@ -208,10 +167,6 @@ class MoiraiModel(nn.Module):
 
 
 class OptimizedMoiraiModel(MoiraiModel):
-    """Moirai + financial encoder + intraday regime embedding, i.e. the
-    'Optimized Moirai' proposed model -- same backbone, only the extra
-    modules are switched on, so the ablation is apples-to-apples."""
-
     def __init__(self, **kwargs):
         kwargs.setdefault("use_financial_encoder", True)
         kwargs.setdefault("use_regime", True)

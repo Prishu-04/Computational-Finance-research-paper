@@ -1,9 +1,3 @@
-"""Utilities for persisting timestamp-level model predictions.
-
-The dashboard should never fabricate predictions from aggregate accuracy. This
-module gives every trained model a reproducible per-window trace that can be
-joined back to the intraday price tape.
-"""
 from pathlib import Path
 import pandas as pd
 

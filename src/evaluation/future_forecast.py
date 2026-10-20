@@ -1,34 +1,3 @@
-"""Future-date ML scenario forecasting for the dashboard.
-
-The repository's market file ends in 2024, so 2025/2026 cannot be treated as
-observed market data. This module exposes two future-scenario modes:
-
-  forecast_future()          -- single scenario, seeded from ONE chosen
-                                 historical day (original behaviour, kept
-                                 for backward compatibility with the
-                                 dashboard's single-path chart).
-
-  forecast_future_ensemble() -- seeds a scenario from EVERY historical day
-                                 in data/raw/raw_data.csv (all 60, by
-                                 default), runs the same recursive
-                                 generator once per seed day, and reports
-                                 the median path plus a 10/90 percentile
-                                 band at each decision checkpoint. This is
-                                 the "use the complete dataset, not one
-                                 arbitrary day" mode.
-
-  build_session_profile()    -- per-5-minute-clock-slot statistics (return,
-                                 volume, VIX mean/std) computed across every
-                                 historical day. Used by the ensemble mode
-                                 and available standalone for anyone who
-                                 wants the raw distributional profile.
-
-Both future modes are still just that -- scenarios. A selected future
-weekday's first 45 minutes are seeded from history (one day, or all of
-them), then each later 5-minute bar is recursively generated using the
-selected trained model's own rolling 60-minute forecast. The dashboard/API
-clearly labels these paths as scenarios, not realized prices.
-"""
 from __future__ import annotations
 
 import math
